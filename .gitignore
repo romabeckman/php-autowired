@@ -1,0 +1,8 @@
+/nbproject/
+build/
+nbbuild/
+dist/
+nbdist/
+.nb-gradle/
+composer.phar
+/vendor/
