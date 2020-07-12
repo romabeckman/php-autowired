@@ -42,10 +42,6 @@ class Autowired {
         }
     }
 
-    static function setAutoInjectionAttributes(bool $autoInjectionAttributes): void {
-        static::$autoInjectionAttributes = $autoInjectionAttributes;
-    }
-
     /**
      * @return object
      */
@@ -60,8 +56,10 @@ class Autowired {
      * @throws DomainException
      */
     public function invokeMethod(string $method, array $params = []) {
+        $reflection = new ReflectionClass($this->class);
+
         try {
-            $reflectionMethod = new ReflectionMethod($this->class, $method);
+            $reflectionMethod = $reflection->getMethod($method);
 
             if ($reflectionMethod->isPublic() === false) {
                 throw new DomainException('Method is not accessible');
@@ -70,13 +68,13 @@ class Autowired {
             $params = $this->getDependencies($reflectionMethod, $params);
 
             if ($reflectionMethod->isConstructor()) {
-                return (new ReflectionClass($this->class))->newInstanceArgs($params);
+                return $reflection->newInstanceArgs($params);
             } else {
                 return $reflectionMethod->invokeArgs($this->getInstance(), $params);
             }
         } catch (ReflectionException $exc) {
             if ($method == '__construct') {
-                return new $this->class;
+                return $reflection->newInstance();
             }
 
             throw new DomainException('The method "' . $method . '" called not exist in "' . $this->class . '" class.');
@@ -139,32 +137,39 @@ class Autowired {
      * @param ReflectionMethod $reflectionMethod
      * @return array
      */
-    private function getDependencies(ReflectionMethod $reflectionMethod, array &$params): array {
+    private function getDependencies(ReflectionMethod $reflectionMethod, array $params): array {
         if ($reflectionMethod->getNumberOfParameters() === 0) {
             return [];
         }
 
         $args = [];
-        try {
-            foreach ($reflectionMethod->getParameters() as $parameters) {
-                $class = $parameters->getClass();
-
-                if (isset($params[$parameters->getName()])) {
-                    $args[$parameters->getName()] = $params[$parameters->getName()];
-                } elseif (is_null($class) == false) {
-                    $args[$parameters->getName()] = (new Autowired($class->getName()))->getInstance();
-                } else {
-                    $args[$parameters->getName()] = array_shift($params);
-                }
+        foreach ($reflectionMethod->getParameters() as $parameters) {
+            if (isset($params[$parameters->getName()])) {
+                $args[$parameters->getName()] = $params[$parameters->getName()];
+            } elseif ($class = $parameters->getClass()) {
+                $class->isInstantiable() && $args[$parameters->getName()] = static::new($class->getName())->getInstance();
+            } else {
+                $args[$parameters->getName()] = array_shift($params);
             }
-        } catch (ReflectionException $exc) {
-            throw new DomainException($exc->getMessage());
         }
-
 
         return $args;
     }
 
+    /**
+     *
+     * @param bool $autoInjectionAttributes
+     * @return void
+     */
+    static function setAutoInjectionAttributes(bool $autoInjectionAttributes): void {
+        static::$autoInjectionAttributes = $autoInjectionAttributes;
+    }
+
+    /**
+     *
+     * @param string $class
+     * @return object
+     */
     static public function new(string $class) {
         return (new static($class))->getInstance();
     }
