@@ -61,7 +61,7 @@ class Autowired {
         try {
             $reflectionMethod = $reflection->getMethod($method);
 
-            if ($reflectionMethod->isPublic() === false) {
+            if ($reflectionMethod->isPublic() === false && $method != '__construct') {
                 throw new DomainException('Method is not accessible');
             }
 
@@ -74,7 +74,7 @@ class Autowired {
             }
         } catch (ReflectionException $exc) {
             if ($method == '__construct') {
-                return $reflection->newInstance();
+                return $reflection->newInstanceWithoutConstructor();
             }
 
             throw new DomainException('The method "' . $method . '" called not exist in "' . $this->class . '" class.');
@@ -126,8 +126,6 @@ class Autowired {
             return $class;
         } elseif (Provider::exist($class)) {
             return Provider::get($class);
-        } elseif (method_exists($class, 'getInstance')) {
-            return $class::getInstance();
         } else {
             return $this->invokeMethod('__construct');
         }
@@ -147,7 +145,7 @@ class Autowired {
             if (isset($params[$parameters->getName()])) {
                 $args[$parameters->getName()] = $params[$parameters->getName()];
             } elseif ($class = $parameters->getClass()) {
-                $class->isInstantiable() && $args[$parameters->getName()] = static::new($class->getName())->getInstance();
+                $class->isInstantiable() && $args[$parameters->getName()] = static::new($class->getName());
             } else {
                 $args[$parameters->getName()] = array_shift($params);
             }
