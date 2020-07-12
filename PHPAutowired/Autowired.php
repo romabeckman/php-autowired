@@ -7,6 +7,9 @@ use \ReflectionClass;
 use \ReflectionException;
 use \ReflectionMethod;
 
+/**
+ * Dependency injection
+ */
 class Autowired {
 
     /**
