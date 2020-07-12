@@ -165,4 +165,8 @@ class Autowired {
         return $args;
     }
 
+    static public function new(string $class) {
+        return (new static($class))->getInstance();
+    }
+
 }
