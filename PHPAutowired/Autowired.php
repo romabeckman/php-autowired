@@ -79,7 +79,7 @@ class Autowired {
                 return new $this->class;
             }
 
-            throw new DomainException('Method called not exist');
+            throw new DomainException('The method "' . $method . '" called not exist in "' . $this->class . '" class.');
         }
     }
 
@@ -90,7 +90,6 @@ class Autowired {
      */
     private function injectInAttributes(): void {
         $reflection = new ReflectionClass($this->class);
-
         foreach ($reflection->getProperties() as $property) {
             $document = $property->getDocComment();
 
@@ -129,6 +128,8 @@ class Autowired {
             return $class;
         } elseif (Provider::exist($class)) {
             return Provider::get($class);
+        } elseif (method_exists($class, 'getInstance')) {
+            return $class::getInstance();
         } else {
             return $this->invokeMethod('__construct');
         }
@@ -138,22 +139,28 @@ class Autowired {
      * @param ReflectionMethod $reflectionMethod
      * @return array
      */
-    private function getDependencies(ReflectionMethod $reflectionMethod, array $params): array {
+    private function getDependencies(ReflectionMethod $reflectionMethod, array &$params): array {
         if ($reflectionMethod->getNumberOfParameters() === 0) {
             return [];
         }
 
         $args = [];
+        try {
+            foreach ($reflectionMethod->getParameters() as $parameters) {
+                $class = $parameters->getClass();
 
-        foreach ($reflectionMethod->getParameters() as $parameters) {
-            $class = $parameters->getClass();
-
-            if (isset($params[$parameters->getName()])) {
-                $args[$parameters->getName()] = $params[$parameters->getName()];
-            } elseif ($class && $class->isInstantiable()) {
-                $args[$parameters->getName()] = (new Autowired($class->getName()))->getInstance();
+                if (isset($params[$parameters->getName()])) {
+                    $args[$parameters->getName()] = $params[$parameters->getName()];
+                } elseif (is_null($class) == false) {
+                    $args[$parameters->getName()] = (new Autowired($class->getName()))->getInstance();
+                } else {
+                    $args[$parameters->getName()] = array_shift($params);
+                }
             }
+        } catch (ReflectionException $exc) {
+            throw new DomainException($exc->getMessage());
         }
+
 
         return $args;
     }
