@@ -1,7 +1,7 @@
 {
-    "name": "romabeckman/PHPAutowired",
+    "name": "romabeckman/php-autowired",
     "description": "A library to Dependency Injection in PHP.",
-    "homepage": "https://github.com/romabeckman/PHPAutowired",
+    "homepage": "https://github.com/romabeckman/php-autowired",
     "authors": [
         {
             "name": "Romário Beckman",
